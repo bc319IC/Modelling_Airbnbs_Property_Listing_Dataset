@@ -59,6 +59,7 @@ def clean_tabular_data(df):
     Clean the raw tabular data by applying all the preprocessing steps.
     """
     df = df.copy()
+    df = df.drop(columns=[col for col in df.columns if 'Unnamed' in col])
     df = remove_rows_with_missing_ratings(df)
     df = combine_description_strings(df)
     df = set_default_feature_values(df)
@@ -76,7 +77,7 @@ def load_airbnb(label):
     """
     # Load the dataset
     df = pd.read_csv('airbnb-property-listings/tabular_data/clean_tabular_data.csv')
-    # List of columns that contain numerical data only (excluding text data)
+    # List of columns that contain numerical data only
     numerical_columns = df.select_dtypes(include=['number']).columns
     # Separate features and labels
     features = df[numerical_columns].drop(columns=[label])

@@ -198,9 +198,9 @@ def evaluate_all_models(X_train, y_train, X_val, y_val, X_test, y_test):
             'model_class': RandomForestRegressor,
             'param_grid': {
                 'n_estimators': [100, 200, 300],
-                'max_depth': [None, 10, 20],
-                'min_samples_split': [2, 5],
-                'min_samples_leaf': [1, 2]
+                'max_depth': [None, 10, 20, 30],
+                'min_samples_split': [2, 5, 10],
+                'min_samples_leaf': [1, 2, 4]
             }
         },
         'gradient_boosting': {

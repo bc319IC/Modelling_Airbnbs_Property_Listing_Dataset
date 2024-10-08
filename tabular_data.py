@@ -77,11 +77,10 @@ def load_airbnb(label):
     """
     # Load the dataset
     df = pd.read_csv('airbnb-property-listings/tabular_data/clean_tabular_data.csv')
-    # List of columns that contain numerical data only
-    numerical_columns = df.select_dtypes(include=['number']).columns
     # Separate features and labels
-    features = df[numerical_columns].drop(columns=[label])
     labels = df[label]
+    df = df.drop(columns=[label])
+    features = df.select_dtypes(include=['number'])
     return features, labels
 
 

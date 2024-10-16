@@ -144,15 +144,20 @@ def evaluate_all_models(X_train, y_train, X_val, y_val, X_test, y_test, task_fol
     hyperparams_dict = {
         DecisionTreeClassifier: {
             'max_depth': [None, 10, 20, 30],
-            'min_samples_split': [2, 5, 10],
+            'min_samples_split': [2, 5, 10, 20, 40],
+            'min_samples_leaf': [1, 2, 4]
         },
         RandomForestClassifier: {
-            'n_estimators': [100, 200, 300],
+            'n_estimators': [50, 100, 200],
             'max_depth': [None, 10, 20, 30],
+            'min_samples_split': [2, 5, 10, 20, 40, 60, 80, 100, 120],
+            'min_samples_leaf': [1, 2, 4]
         },
         GradientBoostingClassifier: {
             'n_estimators': [100, 200, 300],
-            'learning_rate': [0.01, 0.1, 0.2],
+            'learning_rate': [0.01, 0.05, 0.1],
+            'max_depth': [1, 3, 5, 7],
+            'subsample': [0.6, 0.8, 1.0]
         }
     }
     # Loop through each model class, tune it, evaluate, and save results

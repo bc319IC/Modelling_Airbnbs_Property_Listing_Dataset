@@ -1,7 +1,6 @@
-import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import SGDRegressor
-from sklearn.metrics import mean_squared_error, r2_score
+from sklearn.metrics import root_mean_squared_error, r2_score
 from tabular_data import load_airbnb
 import numpy as np
 from itertools import product
@@ -22,7 +21,7 @@ def train_linear_regression():
     features, labels = load_airbnb(label='Price_Night')
     # Split the data into training and testing sets
     X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.3, random_state=42)
-    # Initialize the SGDRegressor model
+    # Initialise the SGDRegressor model
     model = SGDRegressor()
     # Train the model on the training data
     model.fit(X_train, y_train)
@@ -30,10 +29,10 @@ def train_linear_regression():
     y_train_pred = model.predict(X_train)
     y_test_pred = model.predict(X_test)
     # Calculate performance metrics for the training set
-    train_rmse = np.sqrt(mean_squared_error(y_train, y_train_pred))
+    train_rmse = root_mean_squared_error(y_train, y_train_pred)
     train_r2 = r2_score(y_train, y_train_pred)
     # Calculate performance metrics for the test set
-    test_rmse = np.sqrt(mean_squared_error(y_test, y_test_pred))
+    test_rmse = root_mean_squared_error(y_test, y_test_pred)
     test_r2 = r2_score(y_test, y_test_pred)
     # Output the results
     print("Training set performance:")
@@ -73,14 +72,14 @@ def custom_tune_regression_model_hyperparameters(model_class, X_train, y_train, 
     for param_combination in product(*param_values):
         # Create a dictionary of the current combination of hyperparameters
         current_params = dict(zip(param_names, param_combination))
-        # Initialize the model with the current hyperparameters
+        # Initialise the model with the current hyperparameters
         model = model_class(**current_params)
         # Train the model on the training data
         model.fit(X_train, y_train)
         # Predict on the validation set
         y_val_pred = model.predict(X_val)
         # Calculate validation RMSE
-        validation_rmse = np.sqrt(mean_squared_error(y_val, y_val_pred))
+        validation_rmse = root_mean_squared_error(y_val, y_val_pred)
         # If this is the best model so far (lowest validation RMSE), save it
         if validation_rmse < best_validation_rmse:
             best_validation_rmse = validation_rmse
@@ -88,7 +87,7 @@ def custom_tune_regression_model_hyperparameters(model_class, X_train, y_train, 
             best_hyperparams = current_params
     # Evaluate the best model on the test set
     y_test_pred = best_model.predict(X_test)
-    test_rmse = np.sqrt(mean_squared_error(y_test, y_test_pred))
+    test_rmse = root_mean_squared_error(y_test, y_test_pred)
     test_r2 = r2_score(y_test, y_test_pred)
     # Collect performance metrics
     best_metrics = {
@@ -114,35 +113,22 @@ def tune_regression_model_hyperparameters(model_class, X_train, y_train, X_val, 
     - best_params: Dictionary of the best hyperparameter values.
     - best_metrics: Dictionary of performance metrics (validation and test RMSE and R²).
     """
-    best_model = None
-    best_params = None
-    best_val_rmse = float('inf')
-    best_metrics = {}
-    # Iterate through all combinations of hyperparameter values
-    from itertools import product
-    for param_values in product(*param_grid.values()):
-        params = dict(zip(param_grid.keys(), param_values))
-        model = model_class(**params)  # Initialize the model with the current hyperparameters
-        # Fit the model on the training data
-        model.fit(X_train, y_train)
-        # Validation performance
-        y_val_pred = model.predict(X_val)
-        val_rmse = np.sqrt(mean_squared_error(y_val, y_val_pred))
-        # Check if this model is better (lower validation RMSE)
-        if val_rmse < best_val_rmse:
-            best_val_rmse = val_rmse
-            best_model = model
-            best_params = params
-            # Test set performance
-            y_test_pred = model.predict(X_test)
-            test_rmse = np.sqrt(mean_squared_error(y_test, y_test_pred))
-            test_r2 = r2_score(y_test, y_test_pred)
-            # Store the best metrics
-            best_metrics = {
-                'validation_RMSE': best_val_rmse,
-                'test_RMSE': test_rmse,
-                'test_R2': test_r2
-            }
+    # Instantiate the model
+    model = model_class()
+    # Perform grid search
+    grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=5, scoring='neg_root_mean_squared_error')
+    # Fit the model
+    grid_search.fit(X_train, y_train)
+    # Get the best model
+    best_model = grid_search.best_estimator_
+    # Predict on the validation set
+    y_val_pred = best_model.predict(X_val)
+    # Calculate RMSE and R^2
+    rmse = root_mean_squared_error(y_val, y_val_pred)
+    r2 = r2_score(y_val, y_val_pred)
+    # Save best hyperparameters and metrics
+    best_params = grid_search.best_params_
+    best_metrics = {'validation_RMSE': rmse, 'validation_R2': r2}
     return best_model, best_params, best_metrics
 
 def save_model(best_model, best_params, best_metrics, folder="models/regression/linear_regression"):

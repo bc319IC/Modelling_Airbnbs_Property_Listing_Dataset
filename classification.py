@@ -1,5 +1,4 @@
 import os
-import pandas as pd
 from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, accuracy_score, f1_score, precision_score, recall_score
@@ -76,7 +75,7 @@ def tune_classification_model_hyperparameters(model_class, X_train, y_train, X_v
     # Iterate over all combinations of hyperparameter values
     for values in hyperparam_values:
         hyperparam_combination = dict(zip(hyperparam_keys, values))
-        # Initialize the model with the current set of hyperparameters
+        # Initialise the model with the current set of hyperparameters
         model = model_class(**hyperparam_combination)
         # Train the model on the training data
         model.fit(X_train, y_train)
@@ -200,7 +199,7 @@ def find_best_model(task_folder):
     best_model = None
     best_hyperparams = None
     best_metrics = None
-    best_validation_accuracy = float('-inf')  # Initialize with a very low value
+    best_validation_accuracy = float('-inf')  # Initialise with a very low value
     # Iterate through each model folder in the task folder
     for model_folder in os.listdir(task_folder):
         model_path = os.path.join(task_folder, model_folder)

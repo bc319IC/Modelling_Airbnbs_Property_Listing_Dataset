@@ -1,0 +1,13 @@
+{
+    "training_duration": 0.493152379989624,
+    "inference_latency": 1.2061682092138083e-05,
+    "training_loss": 14952.176920572916,
+    "training_rmse": 122.06416320800781,
+    "training_r2": 0.06769380475248932,
+    "validation_loss": 20718.939615885418,
+    "validation_rmse": 153.4901885986328,
+    "validation_r2": 0.11373681267755043,
+    "test_loss": 10414.352213541666,
+    "test_rmse": 101.91183471679688,
+    "test_r2": 0.0950456492577263
+}

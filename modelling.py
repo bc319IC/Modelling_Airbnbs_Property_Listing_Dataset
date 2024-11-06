@@ -14,8 +14,15 @@ from joblib import load
 
 def train_linear_regression():
     """
-    Trains a linear regression model using SGDRegressor to predict 'Price_Night'.
-    The data is split into training and test sets, and the model's performance is evaluated.
+    Trains a linear regression model and evaluates performance.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    None
     """
     # Load features and labels
     features, labels = load_airbnb(label='Price_Night')
@@ -46,32 +53,25 @@ def custom_tune_regression_model_hyperparameters(model_class, X_train, y_train, 
     """
     Perform a grid search over a range of hyperparameter values for a given regression model class.
     
-    Parameters:
-        model_class (class): The regression model class (e.g., SGDRegressor).
-        X_train (pd.DataFrame): Training features.
-        y_train (pd.Series): Training labels.
-        X_val (pd.DataFrame): Validation features.
-        y_val (pd.Series): Validation labels.
-        X_test (pd.DataFrame): Test features.
-        y_test (pd.Series): Test labels.
-        hyperparams (dict): Dictionary mapping hyperparameter names to lists of values to try.
-        
-    Returns:
-        best_model (object): The model instance with the best hyperparameters.
-        best_hyperparams (dict): The best hyperparameter values.
-        best_metrics (dict): Performance metrics of the best model.
+    Parameters
+    ----------
+    model_class, X_train, y_train, X_val, y_val, X_test, y_test, hyperparams
+
+    Returns
+    -------
+    best_model, best_hyperparams, best_metrics
     """
     # Store the best model and hyperparameters
     best_model = None
     best_hyperparams = None
     best_validation_rmse = np.inf  # Start with a very high RMSE for comparison
-    # Get the keys (parameter names) and values (lists of parameter values) from the hyperparams dictionary
-    param_names = list(hyperparams.keys())
-    param_values = list(hyperparams.values())
+    # Create a grid of hyperparameters to try
+    hyperparam_names = list(hyperparams.keys())
+    hyperparam_values = list(hyperparams.values())
     # Iterate over all combinations of hyperparameter values
-    for param_combination in product(*param_values):
+    for param_combination in product(*hyperparam_values):
         # Create a dictionary of the current combination of hyperparameters
-        current_params = dict(zip(param_names, param_combination))
+        current_params = dict(zip(hyperparam_names, param_combination))
         # Initialise the model with the current hyperparameters
         model = model_class(**current_params)
         # Train the model on the training data
@@ -101,17 +101,13 @@ def tune_regression_model_hyperparameters(model_class, X_train, y_train, X_val, 
     """
     Tunes the hyperparameters of the given model class using the provided training, validation, and test data.
     
-    Parameters:
-    - model_class: The regression model class to be tuned.
-    - X_train, y_train: Training features and labels.
-    - X_val, y_val: Validation features and labels.
-    - X_test, y_test: Test features and labels.
-    - param_grid: Dictionary of hyperparameter names mapping to a list of values to be tried.
-    
-    Returns:
-    - best_model: The best model found during tuning.
-    - best_params: Dictionary of the best hyperparameter values.
-    - best_metrics: Dictionary of performance metrics (validation and test RMSE and R²).
+    Parameters
+    ----------
+    model_class, X_train, y_train, X_val, y_val, X_test, y_test, hyperparams
+
+    Returns
+    -------
+    best_model, best_hyperparams, best_metrics
     """
     # Instantiate the model
     model = model_class()
@@ -121,138 +117,157 @@ def tune_regression_model_hyperparameters(model_class, X_train, y_train, X_val, 
     grid_search.fit(X_train, y_train)
     # Get the best model
     best_model = grid_search.best_estimator_
+
+    # Evaluate on training set
+    y_train_pred = best_model.predict(X_train)
+    train_rmse = root_mean_squared_error(y_train, y_train_pred)
+    train_r2 = r2_score(y_train, y_train_pred)
+
     # Predict on the validation set
     y_val_pred = best_model.predict(X_val)
-    # Calculate RMSE and R^2
-    rmse = root_mean_squared_error(y_val, y_val_pred)
-    r2 = r2_score(y_val, y_val_pred)
+    val_rmse = root_mean_squared_error(y_val, y_val_pred)
+    val_r2 = r2_score(y_val, y_val_pred)
+
+    # Evaluate the best model on the test set
+    y_test_pred = best_model.predict(X_test)
+    test_rmse = root_mean_squared_error(y_test, y_test_pred)
+    test_r2 = r2_score(y_test, y_test_pred)
+
     # Save best hyperparameters and metrics
     best_params = grid_search.best_params_
-    best_metrics = {'validation_RMSE': rmse, 'validation_R2': r2}
+    best_metrics = {
+        'train_RMSE': train_rmse, 
+        'train_R2': train_r2,
+        'validation_RMSE': val_rmse, 
+        'validation_R2': val_r2,
+        'test_RMSE': test_rmse, 
+        'test_R2': test_r2
+    }
+
     return best_model, best_params, best_metrics
 
-def save_model(best_model, best_params, best_metrics, folder="models/regression/linear_regression"):
+def save_model(model, hyperparams, metrics, folder="models/regression/linear_regression"):
     """
-    Saves the model, its hyperparameters, and performance metrics.
+    Saves the model, hyperparameters, and metrics to the specified folder.
 
-    Parameters:
-    - folder: The path where the files should be saved.
+    Parameters
+    ----------
+    model, hyperparams, metrics, folder="models/classification/linear_regression"
+
+    Returns
+    -------
+    None
     """
-    # Ensure the directory exists
+    # Ensure the folder exists
     os.makedirs(folder, exist_ok=True)
-    model = best_model  # The trained model from your tuning function
-    best_params = best_params  # The best hyperparameters from your tuning function
-    best_metrics = best_metrics  # The best metrics from your tuning function
-    # Save the model
-    model_file_path = os.path.join(folder, "model.joblib")
-    joblib.dump(model, model_file_path)
-    # Save hyperparameters
-    hyperparameters_file_path = os.path.join(folder, "hyperparameters.json")
-    with open(hyperparameters_file_path, 'w') as f:
-        json.dump(best_params, f)
-    # Save metrics
-    metrics_file_path = os.path.join(folder, "metrics.json")
-    with open(metrics_file_path, 'w') as f:
-        json.dump(best_metrics, f)
-    print(f"Model, hyperparameters, and metrics saved in {folder}")
+    # Save the model as model.joblib
+    model_path = os.path.join(folder, "model.joblib")
+    joblib.dump(model, model_path)
+    # Save the hyperparameters as hyperparameters.json
+    hyperparams_path = os.path.join(folder, "hyperparameters.json")
+    with open(hyperparams_path, 'w') as f:
+        json.dump(hyperparams, f)
+    # Save the metrics as metrics.json
+    metrics_path = os.path.join(folder, "metrics.json")
+    with open(metrics_path, 'w') as f:
+        json.dump(metrics, f)
+    print(f"Model, hyperparameters, and metrics saved to {folder}")
 
-def evaluate_all_models(X_train, y_train, X_val, y_val, X_test, y_test):
+def evaluate_all_models(X_train, y_train, X_val, y_val, X_test, y_test, task_folder):
     """
     Evaluates multiple regression models, tunes their hyperparameters, and saves the best models.
     
-    Models evaluated:
-    - Decision Tree
-    - Random Forest
-    - Gradient Boosting
-    
-    Parameters:
-    - X_train, y_train: Training features and labels.
-    - X_val, y_val: Validation features and labels.
-    - X_test, y_test: Test features and labels.
+    Parameters
+    ----------
+    X_train, y_train, X_val, y_val, X_test, y_test, task_folder
+
+    Returns
+    -------
+    None
     """
-    # Define model classes and their hyperparameter grids
-    model_configs = {
-        'decision_tree': {
-            'model_class': DecisionTreeRegressor,
-            'param_grid': {
-                'max_depth': [None, 10, 20, 30],
-                'min_samples_split': [2, 5, 10, 20, 40],
-                'min_samples_leaf': [1, 2, 4]
-            }
+    # Ensure the task folder exists
+    os.makedirs(task_folder, exist_ok=True)
+    # Model classes and their respective folder names
+    model_classes = [
+        (DecisionTreeRegressor, 'decision_tree'),
+        (RandomForestRegressor, 'random_forest'),
+        (GradientBoostingRegressor, 'gradient_boosting')
+    ]
+    # Define hyperparameters to tune for each model
+    hyperparams_dict = {
+        DecisionTreeRegressor: {
+            'max_depth': [None, 10, 20, 30],
+            'min_samples_split': [2, 5, 10, 20, 40],
+            'min_samples_leaf': [1, 2, 4]
         },
-        'random_forest': {
-            'model_class': RandomForestRegressor,
-            'param_grid': {
-                'n_estimators': [50, 100, 200],
-                'max_depth': [None, 10, 20, 30],
-                'min_samples_split': [2, 5, 10, 20, 40],
-                'min_samples_leaf': [1, 2, 4]
-            }
+        RandomForestRegressor: {
+            'n_estimators': [50, 100, 200],
+            'max_depth': [None, 10, 20, 30],
+            'min_samples_split': [2, 5, 10, 20, 40],
+            'min_samples_leaf': [1, 2, 4]
         },
-        'gradient_boosting': {
-            'model_class': GradientBoostingRegressor,
-            'param_grid': {
-                'n_estimators': [100, 200, 300],
-                'learning_rate': [0.01, 0.05, 0.1],
-                'max_depth': [1, 3, 5, 7],
-                'subsample': [0.6, 0.8, 1.0]
-            }
+        GradientBoostingRegressor: {
+            'n_estimators': [100, 200, 300],
+            'learning_rate': [0.01, 0.05, 0.1],
+            'max_depth': [1, 3, 5, 7],
+            'subsample': [0.6, 0.8, 1.0]
         }
     }
-    # Loop through each model and evaluate
-    for model_name, config in model_configs.items():
-        print(f"Evaluating {model_name.replace('_', ' ').title()}...")
-        # Tune the model's hyperparameters using the custom function
-        best_model, best_params, best_metrics = tune_regression_model_hyperparameters(
-            config['model_class'], X_train, y_train, X_val, y_val, X_test, y_test, config['param_grid']
-        )
-        # Save the model, hyperparameters, and metrics in the respective folder
-        folder_path = os.path.join('models', 'regression', model_name)
-        save_model(best_model, best_params, best_metrics, folder=folder_path)
-        print(f"Best {model_name.replace('_', ' ').title()} saved in {folder_path}.\n")
 
-def find_best_model(base_folder='models/regression'):
+    # Loop through each model class, tune it, evaluate, and save results
+    for model_class, folder_name in model_classes:
+        print(f"Evaluating model: {model_class.__name__}")
+        # Tune the model's hyperparameters
+        best_model, best_hyperparams, best_metrics = tune_regression_model_hyperparameters(
+            model_class, X_train, y_train, X_val, y_val, X_test, y_test, hyperparams_dict[model_class]
+        )
+        # Define folder to save model, hyperparameters, and metrics
+        model_folder = os.path.join(task_folder, folder_name)
+        save_model(best_model, best_hyperparams, best_metrics, folder=model_folder)
+        print(f"Model, hyperparameters, and metrics saved for {model_class.__name__}")
+
+def find_best_model(X_train, y_train, X_val, y_val, X_test, y_test, task_folder):
     """
-    Finds the best regression model by comparing test RMSE of all saved models.
-    
-    Parameters:
-    - base_folder: The folder containing subfolders for each model.
-    
-    Returns:
-    - best_model: The best performing model based on test RMSE.
-    - best_hyperparameters: Dictionary of hyperparameters of the best model.
-    - best_metrics: Dictionary of performance metrics of the best model.
+    Finds and loads the best model based on validation RMSE.
+
+    Parameters
+    ----------
+    X_train, y_train, X_val, y_val, X_test, y_test, task_folder
+
+    Returns
+    -------
+    best_model, best_hyperparams, best_metrics
+
     """
+    evaluate_all_models(X_train, y_train, X_val, y_val, X_test, y_test, task_folder=task_folder)
     best_model = None
-    best_hyperparameters = None
+    best_hyperparams = None
     best_metrics = None
-    best_test_rmse = float('inf')  # Start with a large value for comparison
-    # Loop through each model subfolder
-    for model_folder in os.listdir(base_folder):
-        model_path = os.path.join(base_folder, model_folder)
+    best_val_rmse = float('inf')  # Start with a large value for comparison
+    # Iterate through each model folder in the task folder
+    for model_folder in os.listdir(task_folder):
+        model_path = os.path.join(task_folder, model_folder)
         if os.path.isdir(model_path):
-            # Load the model, hyperparameters, and metrics
-            model_file = os.path.join(model_path, 'model.joblib')
-            hyperparameters_file = os.path.join(model_path, 'hyperparameters.json')
-            metrics_file = os.path.join(model_path, 'metrics.json')
-            if os.path.exists(model_file) and os.path.exists(hyperparameters_file) and os.path.exists(metrics_file):
-                # Load the model
-                model = load(model_file)
-                # Load the hyperparameters
-                with open(hyperparameters_file, 'r') as f:
-                    hyperparameters = json.load(f)
+            try:
                 # Load the metrics
+                metrics_file = os.path.join(model_path, 'metrics.json')
                 with open(metrics_file, 'r') as f:
                     metrics = json.load(f)
-                # Compare based on test RMSE
-                test_rmse = metrics.get('test_RMSE', float('inf'))
-                if test_rmse < best_test_rmse:
-                    best_test_rmse = test_rmse
-                    best_model = model
-                    best_hyperparameters = hyperparameters
+                # Compare based on validation rmse
+                validation_rmse = metrics.get('validation_RMSE', 0)
+                if validation_rmse > best_validation_rmse:
+                    best_validation_rmse = validation_rmse
+                    # Load the best model
+                    best_model = load(os.path.join(model_path, 'model.joblib'))
+                    # Load the hyperparameters
+                    hyperparams_file = os.path.join(model_path, 'hyperparameters.json')
+                    with open(hyperparams_file, 'r') as f:
+                        best_hyperparams = json.load(f)
+                    # Store the best metrics
                     best_metrics = metrics
-    return best_model, best_hyperparameters, best_metrics
-
+            except Exception as e:
+                print(f"Error processing model in {model_folder}: {e}")
+    return best_model, best_hyperparams, best_metrics
 
 
 if __name__ == "__main__":
@@ -261,6 +276,12 @@ if __name__ == "__main__":
     # Split the data
     X_train, X_temp, y_train, y_temp = train_test_split(features, labels, test_size=0.3, random_state=42)
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
+    # Evaluate all models and find the best model
+    best_model, best_hyperparameters, best_metrics = find_best_model(X_train, y_train, X_val, y_val, X_test, y_test, task_folder="models/regression")
+    print(f"Best model found: {best_model}")
+    print(f"Hyperparameters: {best_hyperparameters}")
+    print(f"Performance metrics: {best_metrics}")
+
     # Evalaute linear model
     '''
     # Define the parameter grid for tuning
@@ -275,10 +296,3 @@ if __name__ == "__main__":
     )
     save_model(best_model, best_params, best_metrics)
     '''
-    # Evaluate all models
-    evaluate_all_models(X_train, y_train, X_val, y_val, X_test, y_test)
-    # Find the best model
-    best_model, best_hyperparameters, best_metrics = find_best_model()
-    print(f"Best model found: {best_model}")
-    print(f"Hyperparameters: {best_hyperparameters}")
-    print(f"Performance metrics: {best_metrics}")

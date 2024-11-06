@@ -19,19 +19,43 @@ class AirbnbNightlyPriceRegressionDataset(Dataset):
     def __init__(self, features, labels):
         """
         Initialise the dataset with features and labels.
+
+        Parameters
+        ----------
+        features, lables
+
+        Returns
+        -------
+        none
         """
         self.features = torch.tensor(features.values, dtype=torch.float32)
         self.labels = torch.tensor(labels.values, dtype=torch.float32)
 
     def __len__(self):
         """
-        Return the size of the dataset.
+        Returns the size of the dataset.
+
+        Parameters
+        ----------
+        none
+
+        Returns
+        -------
+        len(self.features)
         """
         return len(self.features)
     
     def __getitem__(self, idx):
         """
         Get a single data point (features, label).
+
+        Parameters
+        ----------
+        idx
+
+        Returns
+        -------
+        features, label
         """
         features = self.features[idx]
         label = self.labels[idx]
@@ -39,6 +63,18 @@ class AirbnbNightlyPriceRegressionDataset(Dataset):
     
 class FullyConnectedNN(nn.Module):
     def __init__(self, input_size, output_size, config):
+        """
+        Initialise the neural network with the specified hyperparamters.
+
+        Parameters
+        ----------
+        input_size, output_size
+        config - YAML file containing the hyperparamters of the neural network
+
+        Returns
+        -------
+        none
+        """
         super().__init__()
         self.layers = nn.ModuleList()
         hidden_layer_width = config['hidden_layer_width']
@@ -54,6 +90,17 @@ class FullyConnectedNN(nn.Module):
         self.activation = nn.ReLU()
 
     def forward(self, x):
+        """
+        Define the forward pass of the network.
+
+        Parameters
+        ----------
+        x
+
+        Returns
+        -------
+        x
+        """
         for layer in self.layers[:-1]:
             x = self.activation(layer(x))
         x = self.layers[-1](x)
@@ -62,16 +109,35 @@ class FullyConnectedNN(nn.Module):
 
 def get_nn_config(yaml_file="nn_config.yaml"):
     """
-    Reads the nn_config.yaml file and returns the configuration as a dictionary.
+    Reads the YAML file and returns the configuration as a dictionary.
+
+    Parameters
+    ----------
+    yaml_file - default is nn_config.yaml
+
+    Returns
+    -------
+    config
     """
     with open(yaml_file, 'r') as file:
         config = yaml.safe_load(file)
     return config
 
 def prepare_datasets():
+    """
+    Splits the data into training, validation, and test sets.
+
+    Parameters
+    ----------
+    none
+
+    Returns
+    -------
+    train_dataset, val_dataset, test_dataset
+    """
     features, labels = load_airbnb(label="Price_Night")
     # Split data
-    X_train, X_temp, y_train, y_temp = train_test_split(features, labels, test_size=0.3, random_state=42)
+    X_train, X_temp, y_train, y_temp = train_test_split(features, labels, test_size=0.2, random_state=42)
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
     # Create datasets
     train_dataset = AirbnbNightlyPriceRegressionDataset(X_train, y_train)
@@ -81,7 +147,15 @@ def prepare_datasets():
 
 def create_dataloaders(train_dataset, val_dataset, test_dataset, batch_size=32):
     """
-    Create DataLoaders for train, validation, and test sets.
+    Create DataLoaders for training, validation, and test sets.
+
+    Parameters
+    ----------
+    train_dataset, val_dataset, test_dataset, batch_size=32
+
+    Returns
+    -------
+    train_loader, val_loader, test_loader
     """
     train_loader = DataLoader(train_dataset, batch_size=batch_size, shuffle=True)
     val_loader = DataLoader(val_dataset, batch_size=batch_size, shuffle=False)
@@ -89,6 +163,19 @@ def create_dataloaders(train_dataset, val_dataset, test_dataset, batch_size=32):
     return train_loader, val_loader, test_loader
 
 def train(model, train_loader, val_loader, test_loader, num_epochs=10, config=None, log_dir="runs/nn_training"):
+    """
+    Trains, validates, and tests the model and saves the model along with its metrics.
+
+    Parameters
+    ----------
+    model - instance of the neural network
+    train_loader, val_loader, test_loader, num_epochs=10, config=None
+    log_dir="runs/nn_training" - default directory for the SummaryWriter
+
+    Returns
+    -------
+    metrics
+    """
     # Initialise TensorBoard SummaryWriter
     writer = SummaryWriter(log_dir)
     # Start timing the entire training process
@@ -109,8 +196,6 @@ def train(model, train_loader, val_loader, test_loader, num_epochs=10, config=No
     for epoch in range(num_epochs):
         model.train()  # Set model to training mode
         running_loss = 0.0
-        correct_train = 0
-        total_train = 0
         # Training phase
         for batch_idx, (features, labels) in enumerate(train_loader):
             # Zero the parameter gradients
@@ -124,45 +209,29 @@ def train(model, train_loader, val_loader, test_loader, num_epochs=10, config=No
             optimiser.step()
             # Accumulate loss over batches
             running_loss += loss.item()
-            # Calculate training accuracy
-            margin = 1  # Define a margin for regression accuracy
-            # Calculate training accuracy (for regression, we'll count predictions within the margin as correct)
-            correct_train = ((outputs.squeeze() >= (labels - margin)) & (outputs.squeeze() <= (labels + margin))).sum().item()
-            total_train += labels.size(0)
-        # Calculate average loss and accuracy for this epoch
+        # Calculate average loss for this epoch
         avg_train_loss = running_loss / len(train_loader)
-        train_accuracy = 100 * correct_train / total_train
         # Compute training rmse and r2  
-        train_rmse, train_r2 = compute_metrics(model, train_loader, loss_function)
+        train_rmse, train_r2 = compute_metrics(model, train_loader)
 
         # Validation phase
         model.eval()  # Set model to evaluation mode
         val_loss = 0.0 # To compute loss
-        correct_val = 0 # To compute accuracy
-        total_val = 0 # To compute accuracy
         with torch.no_grad():  # No need to track gradients for validation
             for features, labels in val_loader:
                 outputs = model(features)
                 # Validation loss
                 loss = loss_function(outputs, labels.unsqueeze(1))
                 val_loss += loss.item()
-                # Validation accuracy
-                predicted = outputs.round()
-                correct_val += (predicted == labels.unsqueeze(1)).sum().item()
-                total_val += labels.size(0)
-        # Calculate average validation loss and accuracy
+        # Calculate average validation loss
         avg_val_loss = val_loss / len(val_loader)
-        val_accuracy = 100 * correct_val / total_val
         # Compute validation rmse and r2  
-        val_rmse, val_r2 = compute_metrics(model, val_loader, loss_function)
+        val_rmse, val_r2 = compute_metrics(model, val_loader)
         # Log metrics to TensorBoard
         writer.add_scalar('Loss/Train', avg_train_loss, epoch)
         writer.add_scalar('Loss/Validation', avg_val_loss, epoch)
-        writer.add_scalar('Accuracy/Train', train_accuracy, epoch)
-        writer.add_scalar('Accuracy/Validation', val_accuracy, epoch)
-        # Print losses and accuracy at the end of each epoch
+        # Print losses at the end of each epoch
         print(f"Epoch [{epoch+1}/{num_epochs}], Train Loss: {avg_train_loss:.4f}, Val Loss: {avg_val_loss:.4f}")
-        print(f"Train Accuracy: {train_accuracy:.2f}%, Validation Accuracy: {val_accuracy:.2f}%")
         
     # Calculate the total training time
     training_end_time = time.time()
@@ -180,29 +249,20 @@ def train(model, train_loader, val_loader, test_loader, num_epochs=10, config=No
         # Test phase
         model.eval()  # Set model to evaluation mode
         test_loss = 0.0 # To compute loss
-        correct_test = 0 # To compute accuracy
-        total_test = 0 # To compute accuracy
         with torch.no_grad():  # No need to track gradients for test
             for features, labels in test_loader:
                 outputs = model(features)
                 # Test loss
                 loss = loss_function(outputs, labels.unsqueeze(1))
                 test_loss += loss.item()
-                # test accuracy
-                predicted = outputs.round()
-                correct_test += (predicted == labels.unsqueeze(1)).sum().item()
-                total_test += labels.size(0)
-        # Calculate average test loss and accuracy
+        # Calculate average test loss
         avg_test_loss = test_loss / len(test_loader)
-        test_accuracy = 100 * correct_test / total_test
         # Compute test rmse and r2  
-        test_rmse, test_r2 = compute_metrics(model, test_loader, loss_function)
+        test_rmse, test_r2 = compute_metrics(model, test_loader)
         # Log metrics to TensorBoard
         writer.add_scalar('Loss/Test', avg_test_loss, epoch)
-        writer.add_scalar('Accuracy/Test', test_accuracy, epoch)
-        # Print losses and accuracy at the end of each epoch
+        # Print losses at the end of each epoch
         print(f"Epoch [{epoch+1}/{num_epochs}], Test Loss: {avg_test_loss:.4f}")
-        print(f"Test Accuracy: {test_accuracy:.2f}%")
     
     # Log metrics to a dictionary
     metrics = {
@@ -224,9 +284,18 @@ def train(model, train_loader, val_loader, test_loader, num_epochs=10, config=No
     writer.close()
     return metrics
 
-def compute_metrics(model, data_loader, loss_fn):
+def compute_metrics(model, data_loader):
     """
-    Computes RMSE and R^2 score for the given model on the provided data_loader.
+    Computes RMSE and R2 score for the given model on the provided data_loader.
+
+    Parameters
+    ----------
+    model, data_loader
+
+    Returns
+    -------
+    rsme, r2
+
     """
     model.eval()  # Set the model to evaluation mode
     all_predictions = []
@@ -244,6 +313,19 @@ def compute_metrics(model, data_loader, loss_fn):
     return rmse, r2
 
 def save_model(model, hyperparameters, metrics, folder="models/neural_networks/regression"):
+    """
+    Saves the model with the timestamp, metrics, and hyperparameters.
+
+    Parameters
+    ----------
+    model, hyperparameters, metrics
+    folder="models/neural_networks/regression" - default directory for saving models
+
+    Returns
+    -------
+    none
+
+    """
     # Create timestamp folder name
     timestamp = datetime.now().strftime("%Y-%m-%d_%H-%M-%S")
     save_path = os.path.join(folder, timestamp)
@@ -270,8 +352,16 @@ def save_model(model, hyperparameters, metrics, folder="models/neural_networks/r
 
 def convert_to_serialisable(obj):
     """
-    Recursively converts non-serialisable data types (e.g., numpy float32) 
+    Recursively converts non-serialisable data types 
     to Python native types for JSON serialisation.
+
+    Parameters
+    ----------
+    obj
+
+    Returns
+    -------
+    obj
     """
     if isinstance(obj, np.float32) or isinstance(obj, np.float64):
         return float(obj)
@@ -285,16 +375,25 @@ def convert_to_serialisable(obj):
 
 def generate_nn_configs():
     """
+    Generates different combination of hyperparameters.
+
+    Parameters
+    ----------
+    none
+
+    Returns
+    -------
+    configs
     """
     # Define hyperparameter options
     learning_rates = [0.001, 0.01, 0.1]
     hidden_layer_widths = [64, 128, 256]
-    depths = [2, 3, 4]  # Number of hidden layers (depth)
+    depths = [2, 3, 4]  # Number of hidden layers
     optimisers = ['adam']  # Different optimisers
-    # Generate all possible combinations (Cartesian product)
+    # Generate all possible combinations 
     combinations = list(itertools.product(learning_rates, hidden_layer_widths, depths, optimisers))
     configs = []
-    for (lr, width, depth, optimiser) in combinations:  # Restrict to first 16 configurations
+    for (lr, width, depth, optimiser) in combinations:
         config = {
             'learning_rate': lr,
             'hidden_layer_width': width,
@@ -304,8 +403,17 @@ def generate_nn_configs():
         configs.append(config)
     return configs
 
-def find_best_nn(train_loader, val_loader, test_loader, folder="models/neural_networks/regression"):
+def find_best_nn(train_loader, val_loader, test_loader, num_epochs=10, folder="models/neural_networks/regression"):
     """
+    Finds the best neural network model using the different hyperparameter combinations.
+
+    Parameters
+    ----------
+    train_loader, val_loader, test_loader, num_epochs=10, folder="models/neural_networks/regression"
+
+    Returns
+    -------
+    best_model, best_metrics, best_hyperparameters
     """
     configs = generate_nn_configs()
     best_model = None
@@ -319,13 +427,8 @@ def find_best_nn(train_loader, val_loader, test_loader, folder="models/neural_ne
         input_size = train_dataset[0][0].shape[0]  # Number of input features
         output_size = 1  # Predicting a single value (nightly price)
         model = FullyConnectedNN(input_size, output_size, config=config)
-        # Define optimiser
-        if config['optimiser'] == 'adam':
-            optimiser = torch.optim.Adam(model.parameters(), lr=config['learning_rate'])
-        elif config['optimiser'] == 'sgd':
-            optimiser = torch.optim.SGD(model.parameters(), lr=config['learning_rate'])
-        # Train and save the models
-        metrics = train(model, train_loader, val_loader, test_loader, num_epochs=10, config=config)
+        # Train and save the models and test
+        metrics = train(model, train_loader, val_loader, test_loader, num_epochs=num_epochs, config=config)
         # Check if this model is the best one based on validation RMSE
         if metrics['validation_rmse'] < best_validation_rmse:
             best_validation_rmse = metrics['validation_rmse']
@@ -335,11 +438,19 @@ def find_best_nn(train_loader, val_loader, test_loader, folder="models/neural_ne
     # Return the best model, its metrics, and hyperparameters
     return best_model, best_metrics, best_hyperparameters
 
+
 if __name__ == "__main__":
     # Prepare datasets
     train_dataset, val_dataset, test_dataset = prepare_datasets()
     # Create DataLoaders
     train_loader, val_loader, test_loader = create_dataloaders(train_dataset, val_dataset, test_dataset)
+    # Find the best neural network model
+    best_model, best_metrics, best_hyperparameters = find_best_nn(train_loader, val_loader, test_loader, num_epochs=100)
+    print(f"Best Model Hyperparameters: {best_hyperparameters}")
+    print(f"Best Model Metrics: {best_metrics}")
+
+    # Run a particular model from the YAML config file
+    '''
     # Load the config from the YAML file
     config = get_nn_config("nn_config.yaml")
     # Initialise the model with the config
@@ -347,9 +458,5 @@ if __name__ == "__main__":
     output_size = 1  # Predicting a single value (nightly price)
     model = FullyConnectedNN(input_size, output_size, config)
     # Train the model
-    #train(model, train_loader, val_loader, test_loader, num_epochs=10, config=config)
-    
-    # Find the best neural network model
-    best_model, best_metrics, best_hyperparameters = find_best_nn(train_loader, val_loader, test_loader)
-    print(f"Best Model Hyperparameters: {best_hyperparameters}")
-    print(f"Best Model Metrics: {best_metrics}")
+    train(model, train_loader, val_loader, test_loader, num_epochs=10, config=config)
+    '''

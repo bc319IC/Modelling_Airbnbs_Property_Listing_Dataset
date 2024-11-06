@@ -3,14 +3,25 @@ from sklearn.model_selection import train_test_split
 from sklearn.linear_model import LogisticRegression
 from sklearn.metrics import classification_report, accuracy_score, f1_score, precision_score, recall_score
 from tabular_data import load_airbnb
-import numpy as np
 import joblib
 import json
 from sklearn.tree import DecisionTreeClassifier
 from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from joblib import load
+from sklearn.model_selection import GridSearchCV
 
 def train_logistic_regression():
+    """
+    Trains a logistic regression model and evaluates performance.
+
+    Parameters
+    ----------
+    None
+
+    Returns
+    -------
+    None
+    """
     # Load the dataset with "Category" as the label
     features, labels = load_airbnb(label='Category')
     # Split the data into training and testing sets
@@ -49,59 +60,78 @@ def train_logistic_regression():
     print("Test Set Classification Report:")
     print(classification_report(y_test, y_test_pred))
 
-def tune_classification_model_hyperparameters(model_class, X_train, y_train, X_val, y_val, hyperparams):
+def tune_classification_model_hyperparameters(model_class, X_train, y_train, X_val, y_val, X_test, y_test, param_grid):
     """
-    Performs hyperparameter tuning for classification models using accuracy on the validation set.
+    Tunes the hyperparameters of the given classification model class using the provided training, validation, and test data.
     
-    Args:
-    - model_class: The classification model class to instantiate.
-    - X_train, y_train: Training data and labels.
-    - X_val, y_val: Validation data and labels.
-    - hyperparams: A dictionary mapping hyperparameter names to a list of values to be tried.
-    
-    Returns:
-    - best_model: The best performing model.
-    - best_hyperparams: A dictionary of the best hyperparameter values.
-    - best_performance_metrics: A dictionary containing validation accuracy and other performance metrics.
+    Parameters
+    ----------
+    model_class, X_train, y_train, X_val, y_val, X_test, y_test, param_grid
+
+    Returns
+    -------
+    best_model, best_hyperparams, best_metrics
     """
-    best_model = None
-    best_hyperparams = None
-    best_performance_metrics = None
-    best_validation_accuracy = -np.inf
-    # Create a grid of hyperparameters to try
-    from itertools import product
-    hyperparam_keys = list(hyperparams.keys())
-    hyperparam_values = list(product(*hyperparams.values()))
-    # Iterate over all combinations of hyperparameter values
-    for values in hyperparam_values:
-        hyperparam_combination = dict(zip(hyperparam_keys, values))
-        # Initialise the model with the current set of hyperparameters
-        model = model_class(**hyperparam_combination)
-        # Train the model on the training data
-        model.fit(X_train, y_train)
-        # Evaluate the model on the validation data
-        y_val_pred = model.predict(X_val)
-        validation_accuracy = accuracy_score(y_val, y_val_pred)
-        # If this model is the best so far, store its information
-        if validation_accuracy > best_validation_accuracy:
-            best_model = model
-            best_hyperparams = hyperparam_combination
-            best_performance_metrics = {
-                'validation_accuracy': validation_accuracy
-            }
-            best_validation_accuracy = validation_accuracy  
-    # Return the best model, hyperparameters, and performance metrics
-    return best_model, best_hyperparams, best_performance_metrics
+    # Instantiate the model
+    model = model_class()
+    # Perform grid search with validation accuracy as the scoring metric
+    grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=5, scoring='accuracy')
+    # Fit the model
+    grid_search.fit(X_train, y_train)
+    # Get the best model
+    best_model = grid_search.best_estimator_
+
+    # Evaluate on training set
+    y_train_pred = best_model.predict(X_train)
+    train_accuracy = accuracy_score(y_train, y_train_pred)
+    train_f1 = f1_score(y_train, y_train_pred, average='weighted')
+    train_recall = recall_score(y_train, y_train_pred, average='weighted')
+    train_precision = precision_score(y_train, y_train_pred, average='weighted')
+
+    # Predict on the validation set
+    y_val_pred = best_model.predict(X_val)
+    val_accuracy = accuracy_score(y_val, y_val_pred)
+    val_f1 = f1_score(y_val, y_val_pred, average='weighted')
+    val_recall = recall_score(y_val, y_val_pred, average='weighted')
+    val_precision = precision_score(y_val, y_val_pred, average='weighted')
+
+    # Evaluate the best model on the test set
+    y_test_pred = best_model.predict(X_test)
+    test_accuracy = accuracy_score(y_test, y_test_pred)
+    test_f1 = f1_score(y_test, y_test_pred, average='weighted')
+    test_recall = recall_score(y_test, y_test_pred, average='weighted')
+    test_precision = precision_score(y_test, y_test_pred, average='weighted')
+
+    # Save best hyperparameters and metrics
+    best_params = grid_search.best_params_
+    best_metrics = {
+        'train_accuracy': train_accuracy, 
+        'train_f1': train_f1,
+        'train_recall': train_recall,
+        'train_precision': train_precision,
+        'validation_accuracy': val_accuracy, 
+        'validation_f1': val_f1,
+        'validation_recall': val_recall,
+        'validation_precision': val_precision,
+        'test_accuracy': test_accuracy, 
+        'test_f1': test_f1,
+        'test_recall': test_recall,
+        'test_precision': test_precision
+    }
+
+    return best_model, best_params, best_metrics
 
 def save_model(model, hyperparams, metrics, folder="models/classification/logistic_regression"):
     """
     Saves the model, hyperparameters, and metrics to the specified folder.
-    
-    Args:
-    - model: The trained model to save.
-    - hyperparams: Dictionary of the best hyperparameters.
-    - metrics: Dictionary of the model's performance metrics.
-    - folder: The folder where the model, hyperparameters, and metrics should be saved.
+
+    Parameters
+    ----------
+    model, hyperparams, metrics, folder="models/classification/logistic_regression"
+
+    Returns
+    -------
+    None
     """
     # Ensure the folder exists
     os.makedirs(folder, exist_ok=True)
@@ -122,14 +152,13 @@ def evaluate_all_models(X_train, y_train, X_val, y_val, X_test, y_test, task_fol
     """
     Evaluates multiple models, tunes their hyperparameters, and saves them.
 
-    Args:
-    - X_train: Training features
-    - y_train: Training labels
-    - X_val: Validation features
-    - y_val: Validation labels
-    - X_test: Test features
-    - y_test: Test labels
-    - task_folder: Folder where models, hyperparameters, and metrics will be saved
+    Parameters
+    ----------
+    X_train, y_train, X_val, y_val, X_test, y_test, task_folder
+
+    Returns
+    -------
+    None
     """
     # Ensure the task folder exists
     os.makedirs(task_folder, exist_ok=True)
@@ -159,43 +188,32 @@ def evaluate_all_models(X_train, y_train, X_val, y_val, X_test, y_test, task_fol
             'subsample': [0.6, 0.8, 1.0]
         }
     }
+
     # Loop through each model class, tune it, evaluate, and save results
     for model_class, folder_name in model_classes:
         print(f"Evaluating model: {model_class.__name__}")
         # Tune the model's hyperparameters
         best_model, best_hyperparams, best_metrics = tune_classification_model_hyperparameters(
-            model_class, X_train, y_train, X_val, y_val, hyperparams_dict[model_class]
+            model_class, X_train, y_train, X_val, y_val, X_test, y_test, hyperparams_dict[model_class]
         )
-        # Compute test performance
-        y_test_pred = best_model.predict(X_test)
-        test_accuracy = accuracy_score(y_test, y_test_pred)
-        test_f1 = f1_score(y_test, y_test_pred, average='weighted')
-        test_precision = precision_score(y_test, y_test_pred, average='weighted')
-        test_recall = recall_score(y_test, y_test_pred, average='weighted')
-        # Add test metrics to the best performance metrics dictionary
-        best_metrics.update({
-            'test_accuracy': test_accuracy,
-            'test_f1': test_f1,
-            'test_precision': test_precision,
-            'test_recall': test_recall
-        })
         # Define folder to save model, hyperparameters, and metrics
         model_folder = os.path.join(task_folder, folder_name)
         save_model(best_model, best_hyperparams, best_metrics, folder=model_folder)
         print(f"Model, hyperparameters, and metrics saved for {model_class.__name__}")
 
-def find_best_model(task_folder):
+def find_best_model(X_train, y_train, X_val, y_val, X_test, y_test, task_folder):
     """
     Finds and loads the best model based on validation accuracy.
 
-    Args:
-    - task_folder: Folder where the models are saved.
+    Parameters
+    ----------
+    X_train, y_train, X_val, y_val, X_test, y_test, task_folder
 
-    Returns:
-    - best_model: The best-performing loaded model.
-    - best_hyperparams: The hyperparameters of the best-performing model.
-    - best_metrics: The performance metrics of the best-performing model.
+    Returns
+    -------
+    best_model, best_hyperparams, best_metrics
     """
+    evaluate_all_models(X_train, y_train, X_val, y_val, X_test, y_test, task_folder=task_folder)
     best_model = None
     best_hyperparams = None
     best_metrics = None
@@ -230,8 +248,14 @@ if __name__ == "__main__":
     # Load the dataset with "Category" as the label
     features, labels = load_airbnb(label='Category')
     # Split data
-    X_train, X_temp, y_train, y_temp = train_test_split(features, labels, test_size=0.3, random_state=42)
+    X_train, X_temp, y_train, y_temp = train_test_split(features, labels, test_size=0.2, random_state=42)
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
+    # Evaluate all models and find the best model
+    best_model, best_hyperparams, best_metrics = find_best_model(X_train, y_train, X_val, y_val, X_test, y_test, task_folder="models/classification")
+    print(f"Best Model: {best_model}")
+    print(f"Best Hyperparameters: {best_hyperparams}")
+    print(f"Best Metrics: {best_metrics}")
+
     # Evalaute logistic model
     '''
     # Define hyperparameters
@@ -260,10 +284,3 @@ if __name__ == "__main__":
     # Save the model, hyperparameters, and metrics to models/classification/logistic_regression
     save_model(best_model, best_hyperparams, best_performance_metrics, folder="models/classification/logistic_regression")
     '''
-    # Evaluate all models and save to the classification folder
-    evaluate_all_models(X_train, y_train, X_val, y_val, X_test, y_test, task_folder="models/classification")
-     # Find the best model after evaluation
-    best_model, best_hyperparams, best_metrics = find_best_model(task_folder="models/classification")
-    print(f"Best Model: {best_model}")
-    print(f"Best Hyperparameters: {best_hyperparams}")
-    print(f"Best Metrics: {best_metrics}")

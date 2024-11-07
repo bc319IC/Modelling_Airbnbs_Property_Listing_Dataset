@@ -123,7 +123,7 @@ def get_nn_config(yaml_file="nn_config.yaml"):
         config = yaml.safe_load(file)
     return config
 
-def prepare_datasets():
+def prepare_datasets(label):
     """
     Splits the data into training, validation, and test sets.
 
@@ -135,7 +135,7 @@ def prepare_datasets():
     -------
     train_dataset, val_dataset, test_dataset
     """
-    features, labels = load_airbnb(label="Price_Night")
+    features, labels = load_airbnb(label)
     # Split data
     X_train, X_temp, y_train, y_temp = train_test_split(features, labels, test_size=0.2, random_state=42)
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
@@ -312,13 +312,13 @@ def compute_metrics(model, data_loader):
     r2 = r2_score(all_labels, all_predictions)
     return rmse, r2
 
-def save_model(model, hyperparameters, metrics, folder="models/neural_networks/regression"):
+def save_model(model, hyperparams, metrics, folder="models/neural_networks/regression"):
     """
     Saves the model with the timestamp, metrics, and hyperparameters.
 
     Parameters
     ----------
-    model, hyperparameters, metrics
+    model, hyperparams, metrics
     folder="models/neural_networks/regression" - default directory for saving models
 
     Returns
@@ -341,9 +341,9 @@ def save_model(model, hyperparameters, metrics, folder="models/neural_networks/r
         model_path = os.path.join(save_path, "model.joblib")
         joblib.dump(model, model_path)
     # Save hyperparameters
-    hyperparameters_path = os.path.join(save_path, "hyperparameters.json")
-    with open(hyperparameters_path, "w") as f:
-        json.dump(hyperparameters, f, indent=4)
+    hyperparams_path = os.path.join(save_path, "hyperparameters.json")
+    with open(hyperparams_path, "w") as f:
+        json.dump(hyperparams, f, indent=4)
     # Save performance metrics
     metrics_path = os.path.join(save_path, "metrics.json")
     with open(metrics_path, "w") as f:
@@ -403,7 +403,7 @@ def generate_nn_configs():
         configs.append(config)
     return configs
 
-def find_best_nn(train_loader, val_loader, test_loader, num_epochs=10, folder="models/neural_networks/regression"):
+def find_best_nn(train_loader, val_loader, test_loader, num_epochs=10):
     """
     Finds the best neural network model using the different hyperparameter combinations.
 
@@ -413,7 +413,7 @@ def find_best_nn(train_loader, val_loader, test_loader, num_epochs=10, folder="m
 
     Returns
     -------
-    best_model, best_metrics, best_hyperparameters
+    best_model, best_metrics, best_hyperparams
     """
     configs = generate_nn_configs()
     best_model = None
@@ -436,17 +436,17 @@ def find_best_nn(train_loader, val_loader, test_loader, num_epochs=10, folder="m
             best_metrics = metrics
             best_hyperparameters = config
     # Return the best model, its metrics, and hyperparameters
-    return best_model, best_metrics, best_hyperparameters
+    return best_model, best_metrics, best_hyperparams
 
 
 if __name__ == "__main__":
     # Prepare datasets
-    train_dataset, val_dataset, test_dataset = prepare_datasets()
+    train_dataset, val_dataset, test_dataset = prepare_datasets(label="Price_Night")
     # Create DataLoaders
     train_loader, val_loader, test_loader = create_dataloaders(train_dataset, val_dataset, test_dataset)
     # Find the best neural network model
-    best_model, best_metrics, best_hyperparameters = find_best_nn(train_loader, val_loader, test_loader, num_epochs=100)
-    print(f"Best Model Hyperparameters: {best_hyperparameters}")
+    best_model, best_metrics, best_hyperparams = find_best_nn(train_loader, val_loader, test_loader, num_epochs=100)
+    print(f"Best Model Hyperparameters: {best_hyperparams}")
     print(f"Best Model Metrics: {best_metrics}")
 
     # Run a particular model from the YAML config file

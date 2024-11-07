@@ -1,1 +1,1 @@
-{"max_depth": 20, "min_samples_split": 10, "min_samples_leaf": 1}
+{"max_depth": 30, "min_samples_leaf": 1, "min_samples_split": 40}

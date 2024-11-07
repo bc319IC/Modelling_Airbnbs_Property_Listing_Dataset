@@ -184,8 +184,8 @@ def evaluate_all_models(X_train, y_train, X_val, y_val, X_test, y_test, task_fol
         GradientBoostingClassifier: {
             'n_estimators': [100, 200, 300],
             'learning_rate': [0.01, 0.05, 0.1],
-            'max_depth': [1, 3, 5, 7],
-            'subsample': [0.6, 0.8, 1.0]
+            'max_depth': [1, 3, 5],
+            'subsample': [0.6, 0.8]
         }
     }
 
@@ -250,6 +250,7 @@ if __name__ == "__main__":
     # Split data
     X_train, X_temp, y_train, y_temp = train_test_split(features, labels, test_size=0.2, random_state=42)
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
+
     # Evaluate all models and find the best model
     best_model, best_hyperparams, best_metrics = find_best_model(X_train, y_train, X_val, y_val, X_test, y_test, task_folder="models/classification")
     print(f"Best Model: {best_model}")
@@ -257,30 +258,14 @@ if __name__ == "__main__":
     print(f"Best Metrics: {best_metrics}")
 
     # Evalaute logistic model
-    '''
-    # Define hyperparameters
     hyperparams = {
         'C': [0.1, 1.0, 10],
         'max_iter': [10000, 20000, 30000],
-        'solver': ['lbfgs', 'liblinear']
+        'solver': ['sag', 'saga', 'liblinear']
     }
-    # Tune hyperparameters using tune_classification_model_hyperparameters
+    # Tune hyperparameters
     best_model, best_hyperparams, best_performance_metrics = tune_classification_model_hyperparameters(
-        LogisticRegression, X_train, y_train, X_val, y_val, hyperparams
+        LogisticRegression, X_train, y_train, X_val, y_val, X_test, y_test, hyperparams
     )
-    # Compute test performance
-    y_test_pred = best_model.predict(X_test)
-    test_accuracy = accuracy_score(y_test, y_test_pred)
-    test_f1 = f1_score(y_test, y_test_pred, average='weighted')
-    test_precision = precision_score(y_test, y_test_pred, average='weighted')
-    test_recall = recall_score(y_test, y_test_pred, average='weighted')
-    # Add test metrics to the best performance metrics dictionary
-    best_performance_metrics.update({
-        'test_accuracy': test_accuracy,
-        'test_f1': test_f1,
-        'test_precision': test_precision,
-        'test_recall': test_recall
-    })
-    # Save the model, hyperparameters, and metrics to models/classification/logistic_regression
-    save_model(best_model, best_hyperparams, best_performance_metrics, folder="models/classification/logistic_regression")
-    '''
+    # Save the model, hyperparameters, and metrics
+    save_model(best_model, best_hyperparams, best_performance_metrics)

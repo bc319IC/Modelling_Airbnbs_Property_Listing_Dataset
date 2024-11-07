@@ -1,1 +1,1 @@
-{"C": 1.0, "max_iter": 10000, "solver": "lbfgs"}
+{"C": 1.0, "max_iter": 10000, "solver": "liblinear"}

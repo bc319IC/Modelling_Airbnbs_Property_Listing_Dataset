@@ -112,7 +112,7 @@ def tune_regression_model_hyperparameters(model_class, X_train, y_train, X_val, 
     # Instantiate the model
     model = model_class()
     # Perform grid search
-    grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=5, scoring='neg_root_mean_squared_error')
+    grid_search = GridSearchCV(estimator=model, param_grid=param_grid, cv=5, scoring='neg_root_mean_squared_error', n_jobs=-1)
     # Fit the model
     grid_search.fit(X_train, y_train)
     # Get the best model
@@ -146,13 +146,13 @@ def tune_regression_model_hyperparameters(model_class, X_train, y_train, X_val, 
 
     return best_model, best_params, best_metrics
 
-def save_model(model, hyperparams, metrics, folder="models/regression/linear_regression"):
+def save_model(model, hyperparams, metrics, folder="models/regression"):
     """
     Saves the model, hyperparameters, and metrics to the specified folder.
 
     Parameters
     ----------
-    model, hyperparams, metrics, folder="models/classification/linear_regression"
+    model, hyperparams, metrics, folder="models/classification"
 
     Returns
     -------
@@ -279,13 +279,14 @@ def find_best_model(X_train, y_train, X_val, y_val, X_test, y_test, task_folder)
 
 if __name__ == "__main__":
     # Load the data
-    features, labels = load_airbnb(label='Price_Night')
+    label = 'Price_Night'
+    features, labels = load_airbnb(label)
     # Split the data
     X_train, X_temp, y_train, y_temp = train_test_split(features, labels, test_size=0.2, random_state=42)
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
 
     # Evaluate all models and find the best model
-    best_model, best_hyperparameters, best_metrics = find_best_model(X_train, y_train, X_val, y_val, X_test, y_test, task_folder="models/regression")
+    best_model, best_hyperparameters, best_metrics = find_best_model(X_train, y_train, X_val, y_val, X_test, y_test, task_folder=f"models/regression/{label}")
     print(f"Best model found: {best_model}")
     print(f"Hyperparameters: {best_hyperparameters}")
     print(f"Performance metrics: {best_metrics}")

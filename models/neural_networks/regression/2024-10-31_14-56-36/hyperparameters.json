@@ -1,6 +1,0 @@
-{
-    "learning_rate": 0.01,
-    "hidden_layer_width": 128,
-    "depth": 2,
-    "optimiser": "adam"
-}

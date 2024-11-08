@@ -164,12 +164,18 @@ def evaluate_all_models(X_train, y_train, X_val, y_val, X_test, y_test, task_fol
     os.makedirs(task_folder, exist_ok=True)
     # Model classes and their respective folder names
     model_classes = [
+        (LogisticRegression, 'logistic_regression'),
         (DecisionTreeClassifier, 'decision_tree'),
         (RandomForestClassifier, 'random_forest'),
         (GradientBoostingClassifier, 'gradient_boosting')
     ]
     # Define hyperparameters to tune for each model
     hyperparams_dict = {
+        LogisticRegression: {
+            'C': [0.1, 1.0, 10],
+            'max_iter': [10000, 20000, 30000],
+            'solver': ['sag', 'saga', 'liblinear']
+        },
         DecisionTreeClassifier: {
             'max_depth': [None, 10, 20, 30],
             'min_samples_split': [2, 5, 10, 20, 40],
@@ -256,16 +262,3 @@ if __name__ == "__main__":
     print(f"Best Model: {best_model}")
     print(f"Best Hyperparameters: {best_hyperparams}")
     print(f"Best Metrics: {best_metrics}")
-
-    # Evalaute logistic model
-    hyperparams = {
-        'C': [0.1, 1.0, 10],
-        'max_iter': [10000, 20000, 30000],
-        'solver': ['sag', 'saga', 'liblinear']
-    }
-    # Tune hyperparameters
-    best_model, best_hyperparams, best_performance_metrics = tune_classification_model_hyperparameters(
-        LogisticRegression, X_train, y_train, X_val, y_val, X_test, y_test, hyperparams
-    )
-    # Save the model, hyperparameters, and metrics
-    save_model(best_model, best_hyperparams, best_performance_metrics)

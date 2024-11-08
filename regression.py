@@ -189,12 +189,19 @@ def evaluate_all_models(X_train, y_train, X_val, y_val, X_test, y_test, task_fol
     os.makedirs(task_folder, exist_ok=True)
     # Model classes and their respective folder names
     model_classes = [
+        (SGDRegressor, 'linear_regression'),
         (DecisionTreeRegressor, 'decision_tree'),
         (RandomForestRegressor, 'random_forest'),
         (GradientBoostingRegressor, 'gradient_boosting')
     ]
     # Define hyperparameters to tune for each model
     hyperparams_dict = {
+        SGDRegressor: {
+            'alpha': [0.0001, 0.001, 0.01, 0.1],
+            'max_iter': [10000, 20000],
+            'penalty': ['l2', 'l1', 'elasticnet'],
+            'eta0': [0.01, 0.1, 1, 10]
+        },
         DecisionTreeRegressor: {
             'max_depth': [None, 10, 20, 30],
             'min_samples_split': [2, 5, 10, 20, 40],
@@ -274,7 +281,7 @@ if __name__ == "__main__":
     # Load the data
     features, labels = load_airbnb(label='Price_Night')
     # Split the data
-    X_train, X_temp, y_train, y_temp = train_test_split(features, labels, test_size=0.3, random_state=42)
+    X_train, X_temp, y_train, y_temp = train_test_split(features, labels, test_size=0.2, random_state=42)
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
 
     # Evaluate all models and find the best model
@@ -282,16 +289,3 @@ if __name__ == "__main__":
     print(f"Best model found: {best_model}")
     print(f"Hyperparameters: {best_hyperparameters}")
     print(f"Performance metrics: {best_metrics}")
-
-    # Evalaute linear model
-    # Define the parameter grid for tuning
-    param_grid = {
-        'alpha': [0.0001, 0.001, 0.01, 0.1],
-        'max_iter': [10000, 20000],
-        'penalty': ['l2', 'l1', 'elasticnet']
-    }
-    # Tune the model hyperparameters
-    best_model, best_params, best_metrics = tune_regression_model_hyperparameters(
-        SGDRegressor, X_train, y_train, X_val, y_val, X_test, y_test, param_grid
-    )
-    save_model(best_model, best_params, best_metrics)

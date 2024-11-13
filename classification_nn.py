@@ -14,6 +14,7 @@ import time
 import numpy as np
 import itertools
 from sklearn.metrics import accuracy_score, f1_score, precision_score, recall_score
+import pandas as pd
 
 class AirbnbNightlyPriceRegressionDataset(Dataset):
     def __init__(self, features, labels):
@@ -141,6 +142,8 @@ def prepare_datasets(label):
     train_dataset, val_dataset, test_dataset
     """
     features, labels = load_airbnb(label)
+    if pd.api.types.is_categorical_dtype(labels):
+        labels = labels.cat.codes
     # Split data
     X_train, X_temp, y_train, y_temp = train_test_split(features, labels, test_size=0.2, random_state=42)
     X_val, X_test, y_val, y_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
@@ -207,7 +210,7 @@ def train_test(model, train_loader, val_loader, test_loader, folder, num_epochs=
             optimiser.zero_grad()
             # Forward pass: compute predicted output by passing features through the model
             outputs = model(features)
-            loss = loss_function(outputs, labels)
+            loss = loss_function(outputs, labels.long())
             # Backward pass: compute gradient of the loss with respect to model parameters
             loss.backward()
             # Perform optimisation: update model parameters
@@ -225,7 +228,7 @@ def train_test(model, train_loader, val_loader, test_loader, folder, num_epochs=
         with torch.no_grad():   # No need to track gradients for validation
             for features, labels in val_loader:
                 outputs = model(features)
-                loss = loss_function(outputs, labels)
+                loss = loss_function(outputs, labels.long())
                 val_loss += loss.item()
         avg_val_loss = val_loss / len(val_loader)
         val_accuracy, val_f1, val_recall, val_precision = compute_metrics(model, val_loader)
@@ -251,7 +254,7 @@ def train_test(model, train_loader, val_loader, test_loader, folder, num_epochs=
         with torch.no_grad():
             for features, labels in test_loader:
                 outputs = model(features)
-                loss = loss_function(outputs, labels)
+                loss = loss_function(outputs, labels.long())
                 test_loss += loss.item()
         avg_test_loss = test_loss / len(test_loader)
         test_accuracy, test_f1, test_recall, test_precision = compute_metrics(model, test_loader)
@@ -309,8 +312,8 @@ def compute_metrics(model, data_loader):
     # Metric calculations
     accuracy = accuracy_score(all_labels, all_predictions)
     f1 = f1_score(all_labels, all_predictions, average='weighted')
-    recall = recall_score(all_labels, all_predictions, average='weighted')
-    precision = precision_score(all_labels, all_predictions, average='weighted')
+    recall = recall_score(all_labels, all_predictions, average='weighted', zero_division=0)
+    precision = precision_score(all_labels, all_predictions, average='weighted', zero_division=0)
     
     return accuracy, f1, recall, precision
 
@@ -405,7 +408,7 @@ def generate_nn_configs():
         configs.append(config)
     return configs
 
-def find_best_nn_classification(train_loader, val_loader, test_loader, folder, num_epochs=10):
+def find_best_nn(train_loader, val_loader, test_loader, folder, num_epochs=10):
     """
     Finds the best neural network model using the different hyperparameter combinations.
 
@@ -427,7 +430,7 @@ def find_best_nn_classification(train_loader, val_loader, test_loader, folder, n
         print(f"Training model {i + 1}/{len(configs)} with config: {config}")
         # Initialise the model with the current config
         input_size = train_dataset[0][0].shape[0]  # Number of input features
-        output_size = len(set(train_dataset.targets))  # Number of classes
+        output_size = len(set(train_dataset.labels))  # Number of classes
         model = FullyConnectedNN(input_size, output_size, config=config)
         # Train and save the models and test
         metrics = train_test(model, train_loader, val_loader, test_loader, folder, num_epochs=num_epochs, config=config)
@@ -443,7 +446,7 @@ def find_best_nn_classification(train_loader, val_loader, test_loader, folder, n
 
 if __name__ == "__main__":
     # Prepare datasets
-    label = "bedrooms"
+    label = "Category"
     train_dataset, val_dataset, test_dataset = prepare_datasets(label)
     # Create DataLoaders
     train_loader, val_loader, test_loader = create_dataloaders(train_dataset, val_dataset, test_dataset)
@@ -458,7 +461,7 @@ if __name__ == "__main__":
     config = get_nn_config("nn_config.yaml")
     # Initialise the model with the config
     input_size = train_dataset[0][0].shape[0]  # Number of input features
-    output_size = 1  # Predicting a single value (nightly price)
+    output_size = len(set(train_dataset.labels))  # Number of classes 
     model = FullyConnectedNN(input_size, output_size, config)
     # Train the model
     train(model, train_loader, val_loader, test_loader, num_epochs=10, config=config)

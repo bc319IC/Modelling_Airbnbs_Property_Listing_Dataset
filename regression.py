@@ -276,6 +276,23 @@ def find_best_model(X_train, y_train, X_val, y_val, X_test, y_test, task_folder)
                 print(f"Error processing model in {model_folder}: {e}")
     return best_model, best_hyperparams, best_metrics
 
+def normalise(df):
+    """
+    Normalises the DataFrame using Z-score normalisation.
+
+    Parameters
+    ----------
+    df
+
+    Returns
+    -------
+    df_normalised
+    """
+    # Apply Z-score normalisation
+    df_normalised = df.copy()
+    df_normalised = (df - df.mean()) / df.std()
+    return df_normalised
+
 
 if __name__ == "__main__":
     # Load the data
@@ -287,6 +304,15 @@ if __name__ == "__main__":
 
     # Evaluate all models and find the best model
     best_model, best_hyperparameters, best_metrics = find_best_model(X_train, y_train, X_val, y_val, X_test, y_test, task_folder=f"models/regression/{label}")
+    print(f"Best model found: {best_model}")
+    print(f"Hyperparameters: {best_hyperparameters}")
+    print(f"Performance metrics: {best_metrics}")
+
+    # Evaluate with normalised features, especially for SGD
+    normalised_features = normalise(features)
+    nX_train, nX_temp, ny_train, ny_temp = train_test_split(normalised_features, labels, test_size=0.2, random_state=42)
+    nX_val, nX_test, ny_val, ny_test = train_test_split(X_temp, y_temp, test_size=0.5, random_state=42)
+    best_model, best_hyperparameters, best_metrics = find_best_model(nX_train, ny_train, nX_val, ny_val, nX_test, ny_test, task_folder=f"models/regression/normalised/{label}")
     print(f"Best model found: {best_model}")
     print(f"Hyperparameters: {best_hyperparameters}")
     print(f"Performance metrics: {best_metrics}")

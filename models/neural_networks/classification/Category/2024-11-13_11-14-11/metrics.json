@@ -1,0 +1,19 @@
+{
+    "training_duration": 8.182997226715088,
+    "inference_latency": 3.615057612039957e-05,
+    "training_loss": 6.259963580540249,
+    "training_accuracy": 0.2383107088989442,
+    "training_f1": 0.12113309900764746,
+    "training_recall": 0.2383107088989442,
+    "training_precision": 0.1732101124473458,
+    "validation_loss": 6.23777977625529,
+    "validation_accuracy": 0.25301204819277107,
+    "validation_f1": 0.10808281670370803,
+    "validation_recall": 0.25301204819277107,
+    "validation_precision": 0.06871932173136992,
+    "test_loss": 6.356820901234944,
+    "test_accuracy": 0.1566265060240964,
+    "test_f1": 0.04332222507049475,
+    "test_recall": 0.1566265060240964,
+    "test_precision": 0.02513758738658337
+}

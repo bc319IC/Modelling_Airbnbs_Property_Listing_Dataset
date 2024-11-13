@@ -252,7 +252,7 @@ def find_best_model(X_train, y_train, X_val, y_val, X_test, y_test, task_folder)
 
 if __name__ == "__main__":
     # Load the dataset with "Category" as the label
-    label = 'bedrooms'
+    label = 'Category'
     features, labels = load_airbnb(label)
     # Split data
     X_train, X_temp, y_train, y_temp = train_test_split(features, labels, test_size=0.2, random_state=42)

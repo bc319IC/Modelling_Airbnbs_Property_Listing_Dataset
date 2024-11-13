@@ -1,5 +1,5 @@
 # modelling-airbnbs-property-listing-dataset-338
-Project in progress...
+Development of an end to end pipeline for creating machine learning models, including neural networks to predict on the airbnb dataset.
 
 ## Table of Contents
 - Installation
@@ -20,19 +20,22 @@ Run the appropraite files in the following section regarding their descriptions.
 ## File Structure
 
 ### tabular_data.py
-tbd
+Contains functions to clean the tabular data and load the features and columns as a tuple. Run this file to download the cleaned version of the CSV file.
 
 ### modelling.py
-tbd
+Run this file to generate the best models after specifing the type of problem (classification or regression), the model (neural network or not), and the label.
 
 #### regression.py
-tbd
+Contains the code for generating regression models.
 
 #### classification.py
-tbd
+Contains the code for generating classification models.
 
-#### neuralnet.py
-tbd
+#### regression_nn.py
+Contains the code for generating regression neural networks.
+
+#### classification_nn.py
+Contains the code for generating classification neural networks.
 
 
 ## License Information

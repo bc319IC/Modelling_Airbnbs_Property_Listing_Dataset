@@ -12,91 +12,6 @@ from sklearn.tree import DecisionTreeRegressor
 from sklearn.ensemble import RandomForestRegressor, GradientBoostingRegressor
 from joblib import load
 
-def train_linear_regression():
-    """
-    Trains a linear regression model and evaluates performance.
-
-    Parameters
-    ----------
-    None
-
-    Returns
-    -------
-    None
-    """
-    # Load features and labels
-    features, labels = load_airbnb(label='Price_Night')
-    # Split the data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.3, random_state=42)
-    # Initialise the SGDRegressor model
-    model = SGDRegressor()
-    # Train the model on the training data
-    model.fit(X_train, y_train)
-    # Make predictions on the training and test data
-    y_train_pred = model.predict(X_train)
-    y_test_pred = model.predict(X_test)
-    # Calculate performance metrics for the training set
-    train_rmse = root_mean_squared_error(y_train, y_train_pred)
-    train_r2 = r2_score(y_train, y_train_pred)
-    # Calculate performance metrics for the test set
-    test_rmse = root_mean_squared_error(y_test, y_test_pred)
-    test_r2 = r2_score(y_test, y_test_pred)
-    # Output the results
-    print("Training set performance:")
-    print(f"RMSE: {train_rmse}")
-    print(f"R^2: {train_r2}")
-    print("\nTest set performance:")
-    print(f"RMSE: {test_rmse}")
-    print(f"R^2: {test_r2}")
-
-def custom_tune_regression_model_hyperparameters(model_class, X_train, y_train, X_val, y_val, X_test, y_test, hyperparams):
-    """
-    Perform a grid search over a range of hyperparameter values for a given regression model class.
-    
-    Parameters
-    ----------
-    model_class, X_train, y_train, X_val, y_val, X_test, y_test, hyperparams
-
-    Returns
-    -------
-    best_model, best_hyperparams, best_metrics
-    """
-    # Store the best model and hyperparameters
-    best_model = None
-    best_hyperparams = None
-    best_validation_rmse = np.inf  # Start with a very high RMSE for comparison
-    # Create a grid of hyperparameters to try
-    hyperparam_names = list(hyperparams.keys())
-    hyperparam_values = list(hyperparams.values())
-    # Iterate over all combinations of hyperparameter values
-    for param_combination in product(*hyperparam_values):
-        # Create a dictionary of the current combination of hyperparameters
-        current_params = dict(zip(hyperparam_names, param_combination))
-        # Initialise the model with the current hyperparameters
-        model = model_class(**current_params)
-        # Train the model on the training data
-        model.fit(X_train, y_train)
-        # Predict on the validation set
-        y_val_pred = model.predict(X_val)
-        # Calculate validation RMSE
-        validation_rmse = root_mean_squared_error(y_val, y_val_pred)
-        # If this is the best model so far (lowest validation RMSE), save it
-        if validation_rmse < best_validation_rmse:
-            best_validation_rmse = validation_rmse
-            best_model = model
-            best_hyperparams = current_params
-    # Evaluate the best model on the test set
-    y_test_pred = best_model.predict(X_test)
-    test_rmse = root_mean_squared_error(y_test, y_test_pred)
-    test_r2 = r2_score(y_test, y_test_pred)
-    # Collect performance metrics
-    best_metrics = {
-        'validation_RMSE': best_validation_rmse,
-        'test_RMSE': test_rmse,
-        'test_R^2': test_r2
-    }
-    return best_model, best_hyperparams, best_metrics
-
 def tune_regression_model_hyperparameters(model_class, X_train, y_train, X_val, y_val, X_test, y_test, param_grid):
     """
     Tunes the hyperparameters of the given model class using the provided training, validation, and test data.
@@ -119,19 +34,11 @@ def tune_regression_model_hyperparameters(model_class, X_train, y_train, X_val, 
     best_model = grid_search.best_estimator_
 
     # Evaluate on training set
-    y_train_pred = best_model.predict(X_train)
-    train_rmse = root_mean_squared_error(y_train, y_train_pred)
-    train_r2 = r2_score(y_train, y_train_pred)
-
+    train_rmse, train_r2 = compute_metrics(best_model, X_train, y_train)
     # Predict on the validation set
-    y_val_pred = best_model.predict(X_val)
-    val_rmse = root_mean_squared_error(y_val, y_val_pred)
-    val_r2 = r2_score(y_val, y_val_pred)
-
+    val_rmse, val_r2 = compute_metrics(best_model, X_val, y_val)
     # Evaluate the best model on the test set
-    y_test_pred = best_model.predict(X_test)
-    test_rmse = root_mean_squared_error(y_test, y_test_pred)
-    test_r2 = r2_score(y_test, y_test_pred)
+    test_rmse, test_r2 = compute_metrics(best_model, X_test, y_test)
 
     # Save best hyperparameters and metrics
     best_params = grid_search.best_params_
@@ -143,8 +50,24 @@ def tune_regression_model_hyperparameters(model_class, X_train, y_train, X_val, 
         'test_RMSE': test_rmse, 
         'test_R2': test_r2
     }
-
     return best_model, best_params, best_metrics
+
+def compute_metrics(best_model, X_set, y_set):
+    """
+    Computes rmse and r2 for the best model on the provided data set.
+
+    Parameters
+    ----------
+    best_model, X_set, y_set
+
+    Returns
+    -------
+    rmse, r2
+    """
+    y_pred = best_model.predict(X_set)
+    rmse = root_mean_squared_error(y_set, y_pred)
+    r2 = r2_score(y_set, y_pred)
+    return rmse, r2
 
 def save_model(model, hyperparams, metrics, folder="models/regression"):
     """
@@ -185,8 +108,6 @@ def evaluate_all_models(X_train, y_train, X_val, y_val, X_test, y_test, task_fol
     -------
     None
     """
-    # Ensure the task folder exists
-    os.makedirs(task_folder, exist_ok=True)
     # Model classes and their respective folder names
     model_classes = [
         (SGDRegressor, 'linear_regression'),

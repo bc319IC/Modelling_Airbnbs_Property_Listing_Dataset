@@ -10,56 +10,6 @@ from sklearn.ensemble import RandomForestClassifier, GradientBoostingClassifier
 from joblib import load
 from sklearn.model_selection import GridSearchCV
 
-def train_logistic_regression():
-    """
-    Trains a logistic regression model and evaluates performance.
-
-    Parameters
-    ----------
-    None
-
-    Returns
-    -------
-    None
-    """
-    # Load the dataset with "Category" as the label
-    features, labels = load_airbnb(label='Category')
-    # Split the data into training and testing sets
-    X_train, X_test, y_train, y_test = train_test_split(features, labels, test_size=0.3, random_state=42)
-    # Train a Logistic Regression model
-    logistic_model = LogisticRegression(max_iter=10000)  # Increase max_iter if convergence issues arise
-    logistic_model.fit(X_train, y_train)
-    # Make predictions on both training and test sets
-    y_train_pred = logistic_model.predict(X_train)
-    y_test_pred = logistic_model.predict(X_test)
-    # Evaluate metrics for the training set
-    train_accuracy = accuracy_score(y_train, y_train_pred)
-    train_precision = precision_score(y_train, y_train_pred, average='weighted')
-    train_recall = recall_score(y_train, y_train_pred, average='weighted')
-    train_f1 = f1_score(y_train, y_train_pred, average='weighted')
-    print(f"Training Set Performance:")
-    print(f"Accuracy: {train_accuracy:.2f}")
-    print(f"Precision: {train_precision:.2f}")
-    print(f"Recall: {train_recall:.2f}")
-    print(f"F1 Score: {train_f1:.2f}")
-    print("\n")
-    # Evaluate metrics for the test set
-    test_accuracy = accuracy_score(y_test, y_test_pred)
-    test_precision = precision_score(y_test, y_test_pred, average='weighted')
-    test_recall = recall_score(y_test, y_test_pred, average='weighted')
-    test_f1 = f1_score(y_test, y_test_pred, average='weighted')
-    print(f"Test Set Performance:")
-    print(f"Accuracy: {test_accuracy:.2f}")
-    print(f"Precision: {test_precision:.2f}")
-    print(f"Recall: {test_recall:.2f}")
-    print(f"F1 Score: {test_f1:.2f}")
-    print("\n")
-    # Classification report
-    print("Training Set Classification Report:")
-    print(classification_report(y_train, y_train_pred))
-    print("Test Set Classification Report:")
-    print(classification_report(y_test, y_test_pred))
-
 def tune_classification_model_hyperparameters(model_class, X_train, y_train, X_val, y_val, X_test, y_test, param_grid):
     """
     Tunes the hyperparameters of the given classification model class using the provided training, validation, and test data.
@@ -82,25 +32,11 @@ def tune_classification_model_hyperparameters(model_class, X_train, y_train, X_v
     best_model = grid_search.best_estimator_
 
     # Evaluate on training set
-    y_train_pred = best_model.predict(X_train)
-    train_accuracy = accuracy_score(y_train, y_train_pred)
-    train_f1 = f1_score(y_train, y_train_pred, average='weighted')
-    train_recall = recall_score(y_train, y_train_pred, average='weighted')
-    train_precision = precision_score(y_train, y_train_pred, average='weighted')
-
+    train_accuracy, train_f1, train_recall, train_precision = compute_metrics(best_model, X_train, y_train)
     # Predict on the validation set
-    y_val_pred = best_model.predict(X_val)
-    val_accuracy = accuracy_score(y_val, y_val_pred)
-    val_f1 = f1_score(y_val, y_val_pred, average='weighted')
-    val_recall = recall_score(y_val, y_val_pred, average='weighted')
-    val_precision = precision_score(y_val, y_val_pred, average='weighted')
-
+    val_accuracy, val_f1, val_recall, val_precision = compute_metrics(best_model, X_val, y_val)
     # Evaluate the best model on the test set
-    y_test_pred = best_model.predict(X_test)
-    test_accuracy = accuracy_score(y_test, y_test_pred)
-    test_f1 = f1_score(y_test, y_test_pred, average='weighted')
-    test_recall = recall_score(y_test, y_test_pred, average='weighted')
-    test_precision = precision_score(y_test, y_test_pred, average='weighted')
+    test_accuracy, test_f1, test_recall, test_precision = compute_metrics(best_model, X_test, y_test)
 
     # Save best hyperparameters and metrics
     best_params = grid_search.best_params_
@@ -118,8 +54,26 @@ def tune_classification_model_hyperparameters(model_class, X_train, y_train, X_v
         'test_recall': test_recall,
         'test_precision': test_precision
     }
-
     return best_model, best_params, best_metrics
+
+def compute_metrics(best_model, X_set, y_set):
+    """
+    Computes accuracy, F1, recall, and precision for the best model on the provided data set.
+
+    Parameters
+    ----------
+    best_model, X_set, y_set
+
+    Returns
+    -------
+    accuracy, f1, recall, precision
+    """
+    y_pred = best_model.predict(X_set)
+    accuracy = accuracy_score(y_set, y_pred)
+    f1 = f1_score(y_set, y_pred, average='weighted')
+    recall = recall_score(y_set, y_pred, average='weighted')
+    precision = precision_score(y_set, y_pred, average='weighted')
+    return accuracy, f1, recall, precision
 
 def save_model(model, hyperparams, metrics, folder="models/classification"):
     """
@@ -160,8 +114,6 @@ def evaluate_all_models(X_train, y_train, X_val, y_val, X_test, y_test, task_fol
     -------
     None
     """
-    # Ensure the task folder exists
-    os.makedirs(task_folder, exist_ok=True)
     # Model classes and their respective folder names
     model_classes = [
         (LogisticRegression, 'logistic_regression'),

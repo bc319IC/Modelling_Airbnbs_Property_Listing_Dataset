@@ -33,27 +33,27 @@ git clone https://github.com/bc319IC/modelling-airbnbs-property-listing-dataset-
 ```
 
 ## Usage
-Run the appropraite files in the following section regarding their descriptions.
+Running the python file `modelling.py` will generate the best regression/classification models depending on what parameters have been set for the given CSV file and label column.
 
 ## File Structure
 
 ### tabular_data.py <a id="tabular_data.py"></a>
-Contains functions to clean the tabular data and load the features and columns as a tuple. Run this file to download the cleaned version of the CSV file.
+Contains functions to clean the tabular data and load the features and labels columns as a tuple. Running this file downloads the cleaned version of the CSV file where the cleaning functions are particular to the CSV file used in this project.
 
 ### modelling.py <a id="modelling.py"></a>
-Run this file to generate the best models after specifing the type of problem (classification or regression), the model (neural network or not), and the label.
+This is the final combined script of the below scripts to create a complete pipeline of generating machine learning models with their metrics.
 
 #### regression.py <a id="regression.py"></a>
-Contains the code for generating regression models.
+Contains the code for generating regression models and their metrics.
 
 #### classification.py <a id="classification.py"></a>
-Contains the code for generating classification models.
+Contains the code for generating classification models and their metrics.
 
 #### regression_nn.py <a id="regression_nn.py"></a>
-Contains the code for generating regression neural networks.
+Contains the code for generating regression neural network models and their metrics.
 
 #### classification_nn.py <a id="classification_nn.py"></a>
-Contains the code for generating classification neural networks.
+Contains the code for generating classification neural network models and their metrics.
 
 ## License
-This project is licensed under the terms of the MIT license. (tbd)
+This project is licensed under the terms of the MIT license.

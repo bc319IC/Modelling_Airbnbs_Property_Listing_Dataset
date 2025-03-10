@@ -55,5 +55,5 @@ Contains the code for generating regression neural networks.
 #### classification_nn.py <a id="classification_nn.py"></a>
 Contains the code for generating classification neural networks.
 
-## License Information
+## License
 This project is licensed under the terms of the MIT license. (tbd)
